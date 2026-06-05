@@ -6,6 +6,15 @@ This is a spiritual successor to [LagGoggles](https://www.curseforge.com/minecra
 
 See [CurseForge](https://www.curseforge.com/minecraft/mc-mods/observable) for download links.
 
+# Server permissions
+
+By default, only vanilla OPs and singleplayer users can start profiles. If LuckPerms is installed on the server, players
+with the `observable.profile` permission can also start TPS profiles without being OP.
+
+Players with the `observable.teleport` permission can also use profiler result teleport actions without being OP.
+
+Admin commands still require vanilla OP permissions.
+
 # Development notes
 
 Forge 1.18:

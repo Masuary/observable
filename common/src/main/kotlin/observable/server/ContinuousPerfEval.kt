@@ -30,7 +30,7 @@ object ContinuousPerfEval {
                 Observable.LOGGER.info("Server running slow, notifying valid players")
                 val playerList = GameInstance.getServer()!!.playerList
                 Observable.CHANNEL.sendToPlayers(playerList.players.filter {
-                    Observable.hasPermission(it)
+                    Observable.canRunProfiler(it)
                 }, S2CPacket.ConsiderProfiling(tps))
                 lastNotified = System.currentTimeMillis()
             }

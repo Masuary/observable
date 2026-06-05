@@ -30,6 +30,7 @@ import observable.net.BetterChannel
 import observable.net.C2SPacket
 import observable.net.S2CPacket
 import observable.server.ContinuousPerfEval
+import observable.server.LuckPermsPermissions
 import observable.server.Profiler
 import observable.server.ServerSettings
 import observable.server.TypeMap
@@ -39,6 +40,8 @@ import kotlin.system.exitProcess
 
 object Observable {
     const val MOD_ID = "observable"
+    const val PROFILE_PERMISSION = "observable.profile"
+    const val TELEPORT_PERMISSION = "observable.teleport"
 
     val PROFILE_KEYBIND by lazy { KeyMapping("key.observable.profile",
         InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, "category.observable.keybinds") }
@@ -53,11 +56,17 @@ object Observable {
         (GameInstance.getServer()?.playerList?.isOp(player.gameProfile) ?: true)
             || (GameInstance.getServer()?.isSingleplayer ?: false)
 
+    fun canRunProfiler(player: Player) =
+        hasPermission(player) || LuckPermsPermissions.hasPermission(player, PROFILE_PERMISSION)
+
+    fun canTeleport(player: Player) =
+        hasPermission(player) || LuckPermsPermissions.hasPermission(player, TELEPORT_PERMISSION)
+
     @JvmStatic
     fun init() {
         CHANNEL.register { t: C2SPacket.InitTPSProfile, supplier ->
             val player = supplier.get().player
-            if (!hasPermission(player)) {
+            if (!canRunProfiler(player)) {
                 LOGGER.info("${player.name.contents} lacks permissions to start profiling")
                 return@register
             }
@@ -66,7 +75,7 @@ object Observable {
 
         CHANNEL.register { t: C2SPacket.RequestTeleport, supplier ->
             val player = supplier.get().player
-            if (!hasPermission(player)) {
+            if (!canTeleport(player)) {
                 LOGGER.info("${player.name.contents} lacks permissions to teleport")
                 return@register
             }
@@ -101,7 +110,7 @@ object Observable {
             (supplier.get().player as? ServerPlayer)?.let {
                 CHANNEL.sendToPlayer(
                     it,
-                    if (hasPermission(it)) S2CPacket.Availability.Available
+                    if (canRunProfiler(it)) S2CPacket.Availability.Available
                     else S2CPacket.Availability.NoPermissions
                 )
             }
