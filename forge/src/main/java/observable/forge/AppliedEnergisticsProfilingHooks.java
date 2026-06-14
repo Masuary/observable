@@ -9,10 +9,16 @@ import observable.Props;
 import observable.server.Profiler;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 public final class AppliedEnergisticsProfilingHooks {
     private static final String AE2_PACKAGE = "appeng.";
+    private static final String CRAFTING_SERVICE = "appeng.me.service.CraftingService";
+    private static final String STORAGE_SERVICE = "appeng.me.service.StorageService";
+    private static final String PATHING_SERVICE = "appeng.me.service.PathingService";
+    private static final String ENERGY_SERVICE = "appeng.me.service.EnergyService";
+    private static final String ON_SERVER_END_TICK = "onServerEndTick";
     private static final String BLOCK_ENTITY_SUFFIX = "BlockEntity";
     private static final String PART_SUFFIX = "Part";
     private static final String LOGIC_SUFFIX = "Logic";
@@ -25,6 +31,13 @@ public final class AppliedEnergisticsProfilingHooks {
                     findMethod(type, "getNode"),
                     findMethod(type, "getGridTickable")
             );
+        }
+    };
+
+    private static final ClassValue<GridAccessors> GRID_ACCESSORS = new ClassValue<GridAccessors>() {
+        @Override
+        protected GridAccessors computeValue(Class<?> type) {
+            return new GridAccessors(findMethod(type, "getPivot"));
         }
     };
 
@@ -98,20 +111,78 @@ public final class AppliedEnergisticsProfilingHooks {
                 traceClassName,
                 traceMethodName
         );
-        Props.currentTarget.set(data);
+        Props.pushCurrentTarget(data);
         return data;
     }
 
+    public static void runGridServiceEndTick(Object grid, Object service) {
+        Profiler.TimingData data = startGridServiceTick(grid, service, ON_SERVER_END_TICK);
+        long startNanos = data != null ? System.nanoTime() : 0L;
+        try {
+            invokeServiceEndTick(service);
+        } finally {
+            finishTiming(data, startNanos);
+        }
+    }
+
+    public static Profiler.TimingData startGridServiceTick(Object grid, Object service, String traceMethodName) {
+        if (grid == null || service == null || !isTrackedGridService(service)) {
+            return null;
+        }
+
+        Object pivot = GRID_ACCESSORS.get(grid.getClass()).getPivot(grid);
+        if (pivot == null) {
+            return null;
+        }
+
+        NodeAccessors nodeAccessors = NODE_ACCESSORS.get(pivot.getClass());
+        Object owner = nodeAccessors.getOwner(pivot);
+        return start(
+                resolveLevel(pivot, nodeAccessors, owner),
+                resolvePos(pivot, nodeAccessors, owner),
+                serviceLabel(service),
+                service.getClass().getName(),
+                traceMethodName
+        );
+    }
+
     public static void finishTickingRequest(Profiler.TimingData data, long startNanos) {
+        finishTiming(data, startNanos);
+    }
+
+    public static void finishTiming(Profiler.TimingData data, long startNanos) {
         if (data == null) {
             return;
         }
 
         data.setTime(System.nanoTime() - startNanos + data.getTime());
         data.setTicks(data.getTicks() + 1);
-        if (Props.currentTarget.get() == data) {
-            Props.currentTarget.set(null);
+        Props.popCurrentTarget(data);
+    }
+
+    private static void invokeServiceEndTick(Object service) {
+        Method method = findMethod(service, ON_SERVER_END_TICK);
+        if (method == null) {
+            throw new IllegalStateException("Could not find AE2 grid service tick method on " + service.getClass().getName());
         }
+
+        try {
+            method.invoke(service);
+        } catch (InvocationTargetException e) {
+            rethrow(e.getCause());
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException("Could not invoke AE2 grid service tick method on " + service.getClass().getName(), e);
+        }
+    }
+
+    private static void rethrow(Throwable throwable) {
+        if (throwable instanceof RuntimeException) {
+            throw (RuntimeException) throwable;
+        }
+        if (throwable instanceof Error) {
+            throw (Error) throwable;
+        }
+        throw new RuntimeException(throwable);
     }
 
     private static Level resolveLevel(Object node, NodeAccessors nodeAccessors, Object owner) {
@@ -169,6 +240,21 @@ public final class AppliedEnergisticsProfilingHooks {
             return tickable;
         }
         return OWNER_ACCESSORS.get(tickable.getClass()).getOuter(tickable);
+    }
+
+    private static boolean isTrackedGridService(Object service) {
+        String className = service.getClass().getName();
+        return CRAFTING_SERVICE.equals(className) ||
+                STORAGE_SERVICE.equals(className) ||
+                PATHING_SERVICE.equals(className) ||
+                ENERGY_SERVICE.equals(className);
+    }
+
+    private static String serviceLabel(Object service) {
+        String className = service.getClass().getName();
+        String simpleName = service.getClass().getSimpleName();
+        String namespace = className.startsWith(AE2_PACKAGE) ? "ae2" : "ae2_compat";
+        return namespace + ":" + toSnakeCase(simpleName);
     }
 
     private static String label(Object source) {
@@ -300,6 +386,18 @@ public final class AppliedEnergisticsProfilingHooks {
 
         private Object getGridTickable(Object target) {
             return invoke(gridTickableMethod, target);
+        }
+    }
+
+    private static final class GridAccessors {
+        private final Method pivotMethod;
+
+        private GridAccessors(Method pivotMethod) {
+            this.pivotMethod = pivotMethod;
+        }
+
+        private Object getPivot(Object target) {
+            return invoke(pivotMethod, target);
         }
     }
 

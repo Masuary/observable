@@ -25,6 +25,7 @@ inline val StackTraceElement.classMethod get() = "${this.className} + ${this.met
 
 class Profiler {
     data class TimingData(var time: Long, var ticks: Int, var traces: TraceMap, var name: String = "")
+    data class BlockTimingKey(val pos: BlockPos, val syntheticName: String? = null)
 
     var timingsMap = HashMap<Entity, TimingData>()
     lateinit var serverTraceMap: TraceMap
@@ -33,7 +34,7 @@ class Profiler {
 
     // TODO: consider splitting out block entity timings
 //    var blockEntityTimingsMap = HashMap<BlockEntity, TimingData>()
-    var blockTimingsMap = HashMap<ResourceKey<Level>, HashMap<BlockPos, TimingData>>()
+    var blockTimingsMap = HashMap<ResourceKey<Level>, HashMap<BlockTimingKey, TimingData>>()
     var notProcessing
         get() = Props.notProcessing
         set(v) {
@@ -50,20 +51,20 @@ class Profiler {
 
     fun processBlockEntity(blockEntity: TickingBlockEntity, level: Level) = blockTimingsMap.getOrPut(level.dimension()) {
         HashMap()
-    }.getOrPut(blockEntity.pos) {
+    }.getOrPut(BlockTimingKey(blockEntity.pos)) {
         TimingData(0, 0, TraceMap(blockEntity::class),
             blockEntity.type)
     }
 
     fun processBlock(blockState: BlockState, pos: BlockPos, level: Level) =
         blockTimingsMap.getOrPut(level.dimension()) { HashMap() }
-            .getOrPut(pos) {
+            .getOrPut(BlockTimingKey(pos)) {
                 TimingData(0, 0, TraceMap(blockState::class),
                     blockState.block.descriptionId)
             }
 
     fun processFluid(fluidState: FluidState, pos: BlockPos, level: Level) =
-        blockTimingsMap.getOrPut(level.dimension()) { HashMap() }.getOrPut(pos) {
+        blockTimingsMap.getOrPut(level.dimension()) { HashMap() }.getOrPut(BlockTimingKey(pos)) {
             TimingData(0, 0, TraceMap(fluidState::class),
                 Registry.FLUID.getKey(fluidState.type).toString())
         }
@@ -74,14 +75,10 @@ class Profiler {
         name: String,
         traceClassName: String,
         traceMethodName: String
-    ) = blockTimingsMap.getOrPut(level.dimension()) { HashMap() }.getOrPut(pos) {
+    ) = blockTimingsMap.getOrPut(level.dimension()) { HashMap() }.getOrPut(BlockTimingKey(pos, name)) {
         TimingData(0, 0, TraceMap(traceClassName, traceMethodName), name)
     }.also {
-        val isSyntheticName = it.name.startsWith("refinedstorage:") ||
-                it.name.startsWith("extrastorage:") ||
-                it.name.startsWith("ae2:") ||
-                it.name.startsWith("ae2_compat:")
-        if (it.name.isBlank() || !isSyntheticName) {
+        if (it.name.isBlank()) {
             it.name = name
         }
     }
@@ -91,6 +88,7 @@ class Profiler {
         timingsMap.clear()
         blockTimingsMap.clear()
         serverTraceMap = TraceMap()
+        Props.clearCurrentTargets()
         val start = System.currentTimeMillis()
         synchronized(Props.notProcessing) {
             notProcessing = false
@@ -127,6 +125,7 @@ class Profiler {
             notProcessing = true
             ticks = GameInstance.getServer()!!.tickCount - startingTicks
         }
+        Props.clearCurrentTargets()
         val players = player?.let { listOf(it) } ?: GameInstance.getServer()!!.playerList.players
         Observable.CHANNEL.sendToPlayers(players, S2CPacket.ProfilingCompleted)
         val data = ProfilingData.create(timingsMap, blockTimingsMap, ticks, serverTraceMap)

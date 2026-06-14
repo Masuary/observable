@@ -7,7 +7,9 @@ val SERVER_LEVEL_CLASS = ServerLevel::class.java.name
 
 class TraceMap(
     var className: String = "null", var methodName: String = "null",
-    val children: MutableMap<MapKey, TraceMap> = mutableMapOf(), var count: Int = 0
+    val children: MutableMap<MapKey, TraceMap> = mutableMapOf(), var count: Int = 0,
+    private val anchorClassName: String = className,
+    private val anchorMethodName: String = methodName
 ) {
     constructor(target: KClass<*>) :
             this(target.java.name)
@@ -15,19 +17,29 @@ class TraceMap(
     data class MapKey(val className: String, val classMethod: String)
 
     fun add(stackTrace: List<StackTraceElement>) {
-        val traces = stackTrace
-            .asReversed()
-            .iterator()
-        while (traces.hasNext()) {
-            val name = traces.next().className
-            if (SERVER_LEVEL_CLASS == name) {
-                add(traces)
-                return
-            }
-        }
+        if (addAfter(stackTrace) { it.className == SERVER_LEVEL_CLASS }) return
+
+        if (anchorClassName != "null" && addAfter(stackTrace) {
+                it.className == anchorClassName && (anchorMethodName == "null" || it.methodName == anchorMethodName)
+            }) return
+
+        if (anchorClassName != "null" && addAfter(stackTrace) { it.className == anchorClassName }) return
+
+        add(stackTrace.asReversed().iterator())
     }
 
-    inline fun add(traces: Iterator<StackTraceElement>) {
+    private fun addAfter(stackTrace: List<StackTraceElement>, predicate: (StackTraceElement) -> Boolean): Boolean {
+        val traces = stackTrace.asReversed().iterator()
+        while (traces.hasNext()) {
+            if (predicate(traces.next())) {
+                add(traces)
+                return true
+            }
+        }
+        return false
+    }
+
+    fun add(traces: Iterator<StackTraceElement>) {
         if (!traces.hasNext()) return
         count += 1
         val tr = traces.next()

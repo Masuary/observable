@@ -36,7 +36,7 @@ data class ProfilingData(
     companion object {
         fun create(
             entities: Map<Entity, Profiler.TimingData>,
-            blocks: Map<ResourceKey<Level>, Map<BlockPos, Profiler.TimingData>>,
+            blocks: Map<ResourceKey<Level>, Map<Profiler.BlockTimingKey, Profiler.TimingData>>,
             ticks: Int,
             traceMap: TraceMap? = null
         ): ProfilingData {
@@ -50,9 +50,9 @@ data class ProfilingData(
             }
 
             val blockEntries = blocks.map { (level, posMap) ->
-                level.location() to posMap.map { (pos, data) ->
-                    chunks.tick(level, pos, data)
-                    Entry(pos, data.name, data)
+                level.location() to posMap.map { (key, data) ->
+                    chunks.tick(level, key.pos, data)
+                    Entry(key.pos, data.name, data)
                 }
             }.toMap()
 

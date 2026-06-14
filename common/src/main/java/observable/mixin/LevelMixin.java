@@ -34,11 +34,11 @@ public class LevelMixin {
                 if (Props.entityDepth < 0) Props.entityDepth = Thread.currentThread().getStackTrace().length - 1;
                 if ((Object)this instanceof ServerLevel) {
                     Profiler.TimingData data = Observable.INSTANCE.getPROFILER().process(entity);
-                    Props.currentTarget.set(data);
+                    Props.pushCurrentTarget(data);
                     long start = System.nanoTime();
                     consumer.accept(entity);
                     data.setTime(System.nanoTime() - start + data.getTime());
-                    Props.currentTarget.set(null);
+                    Props.popCurrentTarget(data);
                     data.setTicks(data.getTicks() + 1);
                 } else {
                     consumer.accept(entity);
@@ -60,11 +60,11 @@ public class LevelMixin {
             if (Props.blockEntityDepth < 0) Props.blockEntityDepth = Thread.currentThread().getStackTrace().length - 1;
             if ((Object)this instanceof ServerLevel) {
                 Profiler.TimingData data = Observable.INSTANCE.getPROFILER().processBlockEntity(blockEntity, (Level)(Object)this);
-                Props.currentTarget.set(data);
+                Props.pushCurrentTarget(data);
                 long start = System.nanoTime();
                 blockEntity.tick();
                 data.setTime(System.nanoTime() - start + data.getTime());
-                Props.currentTarget.set(null);
+                Props.popCurrentTarget(data);
                 data.setTicks(data.getTicks() + 1);
             } else {
                 blockEntity.tick();

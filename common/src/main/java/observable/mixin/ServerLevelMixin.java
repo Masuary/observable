@@ -23,11 +23,11 @@ public class ServerLevelMixin {
         else {
             if (Props.fluidDepth < 0) Props.fluidDepth = Thread.currentThread().getStackTrace().length - 1;
             Profiler.TimingData data = Observable.INSTANCE.getPROFILER().processFluid(state, pos, level);
-            Props.currentTarget.set(data);
+            Props.pushCurrentTarget(data);
             long start = System.nanoTime();
             state.tick(level, pos);
             data.setTime(System.nanoTime() - start + data.getTime());
-            Props.currentTarget.set(null);
+            Props.popCurrentTarget(data);
             data.setTicks(data.getTicks() + 1);
         }
     }
@@ -39,11 +39,11 @@ public class ServerLevelMixin {
         else {
             if (Props.blockDepth < 0) Props.blockDepth = Thread.currentThread().getStackTrace().length - 1;
             Profiler.TimingData data = Observable.INSTANCE.getPROFILER().processBlock(state, pos, level);
-            Props.currentTarget.set(data);
+            Props.pushCurrentTarget(data);
             long start = System.nanoTime();
             state.tick(level, pos, random);
             data.setTime(System.nanoTime() - start + data.getTime());
-            Props.currentTarget.set(null);
+            Props.popCurrentTarget(data);
             data.setTicks(data.getTicks() + 1);
         }
     }

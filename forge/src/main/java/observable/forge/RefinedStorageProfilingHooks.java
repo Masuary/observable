@@ -56,7 +56,7 @@ public final class RefinedStorageProfilingHooks {
                 traceClassName,
                 traceMethodName
         );
-        Props.currentTarget.set(data);
+        Props.pushCurrentTarget(data);
         return data;
     }
 
@@ -67,9 +67,7 @@ public final class RefinedStorageProfilingHooks {
 
         data.setTime(System.nanoTime() - startNanos + data.getTime());
         data.setTicks(data.getTicks() + 1);
-        if (Props.currentTarget.get() == data) {
-            Props.currentTarget.set(null);
-        }
+        Props.popCurrentTarget(data);
     }
 
     private static String label(Object node) {

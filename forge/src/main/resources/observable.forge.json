@@ -4,6 +4,7 @@
   "package": "observable.forge.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
+    "AppliedEnergisticsGridServiceMixin",
     "AppliedEnergisticsTickManagerServiceMixin",
     "RefinedStorageNetworkUpdateMixin",
     "RefinedStorageNetworkNodeUpdateMixin"
