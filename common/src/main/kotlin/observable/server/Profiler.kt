@@ -68,6 +68,21 @@ class Profiler {
                 Registry.FLUID.getKey(fluidState.type).toString())
         }
 
+    fun processSyntheticBlock(
+        level: Level,
+        pos: BlockPos,
+        name: String,
+        traceClassName: String,
+        traceMethodName: String
+    ) = blockTimingsMap.getOrPut(level.dimension()) { HashMap() }.getOrPut(pos) {
+        TimingData(0, 0, TraceMap(traceClassName, traceMethodName), name)
+    }.also {
+        val isSyntheticName = it.name.startsWith("refinedstorage:") || it.name.startsWith("extrastorage:")
+        if (it.name.isBlank() || !isSyntheticName) {
+            it.name = name
+        }
+    }
+
     fun startRunning(duration: Int? = null, sample: Boolean = false, ctx: NetworkManager.PacketContext) {
         player = ctx.player as? ServerPlayer
         timingsMap.clear()

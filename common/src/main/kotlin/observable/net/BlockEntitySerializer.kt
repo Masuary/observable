@@ -5,7 +5,6 @@ import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import net.minecraft.client.Minecraft
 import net.minecraft.world.level.block.entity.BlockEntity
 
 class BlockEntitySerializer : KSerializer<BlockEntity?> {
@@ -14,7 +13,7 @@ class BlockEntitySerializer : KSerializer<BlockEntity?> {
 
     override fun deserialize(decoder: Decoder): BlockEntity? {
         return delegate.deserialize(decoder)?.let {
-            Minecraft.getInstance().level?.getBlockEntity(it)
+            ClientLevelResolver.getLevel()?.getBlockEntity(it)
         }
     }
 

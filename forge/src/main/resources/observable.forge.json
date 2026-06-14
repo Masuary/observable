@@ -1,0 +1,15 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "observable.forge.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "RefinedStorageNetworkUpdateMixin",
+    "RefinedStorageNetworkNodeUpdateMixin"
+  ],
+  "client": [],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

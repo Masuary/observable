@@ -7,6 +7,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import observable.Observable;
+import observable.client.ObservableClient;
 import static observable.Observable.init;
 import observable.server.ModLoader;
 import observable.server.Remapper;
@@ -31,7 +32,7 @@ public class ObservableForge {
     }
 
     public void onClientInit(FMLClientSetupEvent ev) {
-        Observable.clientInit();
+        ObservableClient.init();
         MinecraftForge.EVENT_BUS.register(ForgeClientHooks.INSTANCE);
     }
 
