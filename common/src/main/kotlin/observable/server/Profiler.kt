@@ -77,7 +77,10 @@ class Profiler {
     ) = blockTimingsMap.getOrPut(level.dimension()) { HashMap() }.getOrPut(pos) {
         TimingData(0, 0, TraceMap(traceClassName, traceMethodName), name)
     }.also {
-        val isSyntheticName = it.name.startsWith("refinedstorage:") || it.name.startsWith("extrastorage:")
+        val isSyntheticName = it.name.startsWith("refinedstorage:") ||
+                it.name.startsWith("extrastorage:") ||
+                it.name.startsWith("ae2:") ||
+                it.name.startsWith("ae2_compat:")
         if (it.name.isBlank() || !isSyntheticName) {
             it.name = name
         }
